@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bus Penedès · Horaris</title>
+  <meta name="description" content="Mapa de paradas, líneas y horarios de los autobuses interurbanos de Cataluña (no oficial).">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // aplica el tema antes de pintar para evitar parpadeo
+    try {
+      const t = localStorage.getItem("theme");
+      const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    } catch (e) { document.documentElement.dataset.theme = "light"; }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="Inicio">
+      <img src="icon.svg" alt="" width="28" height="28"><span>Bus Penedès</span>
+    </a>
+    <div class="search">
+      <input id="q" type="search" autocomplete="off" data-i18n-ph="searchPh">
+    </div>
+    <button id="btnLocate" class="icon-btn" data-i18n-title="locate">◎</button>
+    <button id="btnLang" class="icon-btn txt" title="Idioma / Idioma">CA</button>
+    <button id="btnTheme" class="icon-btn" data-i18n-title="theme">◐</button>
+  </header>
+
+  <main class="layout">
+    <section id="panel" class="panel">
+      <button id="sheetHandle" class="sheet-handle" aria-label="Expandir"></button>
+      <nav class="tabs">
+        <a href="#/" data-tab="home" data-i18n="tabLines"></a>
+        <a href="#/plan" data-tab="plan" data-i18n="tabPlan"></a>
+        <a href="#/favs" data-tab="favs" data-i18n="tabFavs"></a>
+      </nav>
+      <div id="view" class="view"><p class="muted pad" data-i18n="loading"></p></div>
+      <footer class="foot" id="foot"></footer>
+    </section>
+    <div id="map" class="map"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

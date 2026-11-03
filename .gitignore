@@ -1,0 +1,6 @@
+# los datos se generan en el build (GitHub Actions)
+public/data/
+__pycache__/
+node_modules/
+.wrangler/
+*.zip
