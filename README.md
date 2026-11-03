@@ -1,7 +1,7 @@
 # CATBusMap
 
 Web app (PWA) con el mapa, las paradas, las líneas y los horarios de **todos los autobuses
-interurbanos de Cataluña** (más de 100 operadores), con filtro por operador. Es una app no oficial.
+interurbanos de Cataluña** (más de 100 operadores), con filtro por operador. Es una app no oficial, esta hecha por los LOLes y por claude en dos horas :p.
 
 - Mapa de paradas y recorridos de cada línea
 - Próximas salidas por parada, con cuenta atrás, y horario completo de cualquier día
