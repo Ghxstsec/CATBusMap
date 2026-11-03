@@ -1,4 +1,4 @@
-/* Bus Penedès · Horaris — app sin dependencias aparte de Leaflet */
+/* CATBusMap — app sin dependencias aparte de Leaflet */
 (() => {
   "use strict";
 
@@ -45,7 +45,7 @@
   // ---------- estado ----------
   const S = {
     lang: store.get("lang", "es"),
-    agency: store.get("agency", null), // null = todos
+    agency: store.get("operator", null), // null = todos
     favs: store.get("favs", { stops: [], routes: [] }),
     meta: null, stops: [], stopById: new Map(), svcBits: new Map(),
     me: null,
@@ -102,7 +102,7 @@
   // ---------- mapa ----------
   let map, tiles, stopLayer, routeLayer, busLayer, meMarker, selMarker;
   function initMap() {
-    map = L.map("map", { preferCanvas: true, zoomControl: true }).setView(store.get("view", [41.3, 1.65]), store.get("zoom", 11));
+    map = L.map("map", { preferCanvas: true, zoomControl: true }).setView(store.get("view", [41.75, 1.75]), store.get("zoom", 8));
     if (isMobile()) map.attributionControl.setPosition("topright");
     // OpenStreetMap; en modo oscuro se invierte por CSS (sin API key)
     tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -126,7 +126,7 @@
     const b = map.getBounds().pad(0.2);
     const dark = document.documentElement.dataset.theme === "dark";
     const filtered = !!S.agency;
-    if (!highlightStops && !filtered && z < 12) return;
+    if (!highlightStops && !filtered && z < 11) return;
     if (!highlightStops && filtered && z < 9) return;
     const r = z >= 15 ? 7 : z >= 13 ? 5 : 4;
     for (const s of S.stops) {
@@ -194,12 +194,7 @@
   // ---------- vistas ----------
   function agencyPicker() {
     const ags = Object.entries(S.meta.agencies).sort((a, b) => a[1].localeCompare(b[1]));
-    const pen = ags.find(([, n]) => /pened[eè]s/i.test(n));
     return `
-      <div class="chips">
-        ${pen ? `<button class="chip ${S.agency === pen[0] ? "on" : ""}" data-agency="${pen[0]}">Autocars del Penedès</button>` : ""}
-        <button class="chip ${!S.agency ? "on" : ""}" data-agency="">${t("allOperators")}</button>
-      </div>
       <div class="row-ctrl">
         <select id="agencySel" aria-label="${t("operator")}">
           <option value="">${t("allOperators")}</option>
@@ -231,7 +226,7 @@
     view().innerHTML = `${agencyPicker()}${near}
       <h3>${t("lines")} (${rids.length})</h3>
       <ul class="list">${rids.map(routeItem).join("")}</ul>
-      ${!S.agency && map.getZoom() < 12 ? `<p class="pad muted small">${t("zoomHint")}</p>` : ""}`;
+      ${!S.agency && map.getZoom() < 11 ? `<p class="pad muted small">${t("zoomHint")}</p>` : ""}`;
   }
 
   function renderSearch(q) {
@@ -536,7 +531,7 @@
     if (e.target.id === "agencySel") setAgency(e.target.value || null);
   });
   function setAgency(a) {
-    S.agency = a; store.set("agency", a);
+    S.agency = a; store.set("operator", a);
     const q = $("#q").value.trim();
     if (q) renderSearch(q); else renderHome();
     drawStops();
@@ -598,10 +593,6 @@
     S.meta = meta; S.stops = stops;
     for (const s of stops) S.stopById.set(s[0], s);
     if (S.agency && !meta.agencies[S.agency]) S.agency = null;
-    if (store.get("agency", undefined) === undefined) {
-      const pen = Object.entries(meta.agencies).find(([, n]) => /pened[eè]s/i.test(n));
-      if (pen) { S.agency = pen[0]; store.set("agency", pen[0]); }
-    }
     applyLang();
     await route();
   }

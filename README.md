@@ -1,7 +1,7 @@
-# Bus Penedès · Horaris
+# CATBusMap
 
 Web app (PWA) con el mapa, las paradas, las líneas y los horarios de **todos los autobuses
-interurbanos de Cataluña**, con acceso rápido a **Autocars del Penedès**. Es una app no oficial.
+interurbanos de Cataluña** (más de 100 operadores), con filtro por operador. Es una app no oficial.
 
 - Mapa de paradas y recorridos de cada línea
 - Próximas salidas por parada, con cuenta atrás, y horario completo de cualquier día

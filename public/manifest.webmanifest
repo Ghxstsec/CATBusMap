@@ -1,6 +1,6 @@
 {
-  "name": "Bus Penedès · Horaris",
-  "short_name": "Bus Penedès",
+  "name": "CATBusMap",
+  "short_name": "CATBusMap",
   "description": "Paradas, líneas y horarios de los autobuses interurbanos de Cataluña (no oficial)",
   "start_url": "./",
   "scope": "./",
