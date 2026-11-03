@@ -1,5 +1,5 @@
 // Service worker: app offline + datos visitados disponibles sin conexión
-const VERSION = "v2";
+const VERSION = "v4";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "i18n.js", "icon.svg", "manifest.webmanifest",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"];

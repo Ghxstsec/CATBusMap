@@ -175,6 +175,7 @@
     const h = decodeURIComponent(location.hash.slice(1) || "/");
     const parts = h.split("/").filter(Boolean);
     clearRouteLayers();
+    expandSheet("open");
     if (parts[0] !== "stop") selectStopMarker(null);
     view().scrollTop = 0;
     try {
@@ -556,25 +557,120 @@
     drawStops();
   };
   $("#btnLang").onclick = () => { S.lang = S.lang === "es" ? "ca" : "es"; store.set("lang", S.lang); applyLang(); route(); };
+  function setMe(lat, lon, zoom = 15) {
+    S.me = [lat, lon];
+    if (meMarker) map.removeLayer(meMarker);
+    meMarker = L.marker(S.me, { icon: L.divIcon({ className: "", html: '<div class="me-icon"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }), interactive: false }).addTo(map);
+    map.setView(S.me, Math.max(map.getZoom(), zoom));
+    go("#/");
+  }
+  // si el navegador no da la ubicación, el usuario puede tocar el mapa
+  function pickOnMap(msg) {
+    alert(`${msg}\n\n${t("geoPick")}`);
+    map.getContainer().style.cursor = "crosshair";
+    map.once("click", (e) => { map.getContainer().style.cursor = ""; setMe(e.latlng.lat, e.latlng.lng, map.getZoom()); });
+  }
   $("#btnLocate").onclick = () => {
-    if (!navigator.geolocation) return alert(t("geoError"));
-    navigator.geolocation.getCurrentPosition((p) => {
-      S.me = [p.coords.latitude, p.coords.longitude];
-      if (meMarker) map.removeLayer(meMarker);
-      meMarker = L.marker(S.me, { icon: L.divIcon({ className: "", html: '<div class="me-icon"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }), interactive: false }).addTo(map);
-      map.setView(S.me, 15);
-      go("#/");
-    }, () => alert(t("geoError")), { enableHighAccuracy: true, timeout: 10000 });
+    const btn = $("#btnLocate");
+    if (!navigator.geolocation || !window.isSecureContext) return pickOnMap(t("geoUnsupported"));
+    btn.disabled = true; btn.textContent = "…";
+    const done = () => { btn.disabled = false; btn.textContent = "◎"; };
+    const ok = (p) => { done(); setMe(p.coords.latitude, p.coords.longitude); };
+    const fail = (err) => {
+      done();
+      if (err.code === 1) alert(t("geoDenied"));
+      else pickOnMap(t(err.code === 3 ? "geoTimeout" : "geoUnavailable"));
+    };
+    // 1º aproximada (wifi/red, rápida); si falla, reintento con GPS
+    navigator.geolocation.getCurrentPosition(ok, (err) => {
+      if (err.code === 1) return fail(err);
+      navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
   };
   const panel = $("#panel");
+  // ---------- panel inferior arrastrable (móvil) ----------
+  const SNAPS = ["collapsed", "mid", "expanded"];
+  const sheetState = () => (panel.classList.contains("expanded") ? "expanded" : panel.classList.contains("collapsed") ? "collapsed" : "mid");
+  function setSheet(st) {
+    panel.classList.remove("expanded", "collapsed", "dragging");
+    panel.style.height = "";
+    if (st !== "mid") panel.classList.add(st);
+  }
+  function snapHeights() {
+    const H = panel.parentElement.clientHeight;
+    return { collapsed: 84, mid: H * 0.46, expanded: H * 0.88 };
+  }
   function expandSheet(force) {
     if (!isMobile()) return;
-    if (force === true) { panel.classList.remove("collapsed"); panel.classList.add("expanded"); return; }
-    if (panel.classList.contains("expanded")) { panel.classList.remove("expanded"); panel.classList.add("collapsed"); }
-    else if (panel.classList.contains("collapsed")) panel.classList.remove("collapsed");
-    else panel.classList.add("expanded");
+    if (force === true) return setSheet("expanded");
+    if (force === "open") { if (sheetState() === "collapsed") setSheet("mid"); return; }
+    setSheet(sheetState() === "expanded" ? "mid" : "expanded");
   }
-  $("#sheetHandle").onclick = () => expandSheet();
+  let drag = null;
+  function dragStart(y) {
+    drag = { y0: y, h0: panel.getBoundingClientRect().height, moved: false, samples: [[y, performance.now()]] };
+  }
+  function dragMove(y) {
+    if (!drag) return false;
+    const dy = y - drag.y0;
+    if (!drag.moved && Math.abs(dy) < 6) return false;
+    drag.moved = true;
+    panel.classList.add("dragging");
+    const sh = snapHeights();
+    panel.style.height = `${Math.max(sh.collapsed, Math.min(sh.expanded + 20, drag.h0 - dy))}px`;
+    drag.samples.push([y, performance.now()]);
+    if (drag.samples.length > 5) drag.samples.shift();
+    return true;
+  }
+  function dragEnd() {
+    if (!drag) return false;
+    const d = drag; drag = null;
+    if (!d.moved) return false;
+    const [y1, t1] = d.samples[0], [y2, t2] = d.samples[d.samples.length - 1];
+    const v = (y2 - y1) / Math.max(1, t2 - t1); // px/ms, + = hacia abajo
+    const h = panel.getBoundingClientRect().height;
+    const sh = snapHeights();
+    let st;
+    if (Math.abs(v) > 0.45) {
+      const order = SNAPS.slice().sort((a, b) => sh[a] - sh[b]);
+      const cur = order.reduce((best, k) => (Math.abs(sh[k] - h) < Math.abs(sh[best] - h) ? k : best), order[0]);
+      let i = order.indexOf(cur);
+      if (v < 0 && sh[cur] <= h) i++;
+      if (v > 0 && sh[cur] >= h) i--;
+      st = order[Math.max(0, Math.min(order.length - 1, i))];
+    } else {
+      st = SNAPS.reduce((best, k) => (Math.abs(sh[k] - h) < Math.abs(sh[best] - h) ? k : best), "mid");
+    }
+    setSheet(st);
+    setTimeout(() => map.invalidateSize(), 300);
+    return true;
+  }
+  // asa y pestañas: arrastrar con cualquier puntero
+  let suppressClick = false;
+  for (const el of [$("#sheetHandle"), $(".tabs")]) {
+    el.addEventListener("pointerdown", (e) => { suppressClick = false; if (isMobile()) dragStart(e.clientY); });
+    // capturamos el puntero solo cuando empieza a arrastrar, para no romper los toques en las pestañas
+    el.addEventListener("pointermove", (e) => { if (dragMove(e.clientY) && !el.hasPointerCapture(e.pointerId)) el.setPointerCapture(e.pointerId); });
+    el.addEventListener("pointerup", () => {
+      if (dragEnd()) suppressClick = true;
+      else if (el.id === "sheetHandle") expandSheet(); // toque en el asa
+    });
+    el.addEventListener("pointercancel", () => dragEnd());
+    el.addEventListener("click", (e) => { if (suppressClick) { e.preventDefault(); e.stopPropagation(); suppressClick = false; } }, true);
+  }
+  // contenido: si estás arriba del todo, deslizar hacia abajo baja el panel
+  const viewEl = $("#view");
+  viewEl.addEventListener("touchstart", (e) => {
+    if (isMobile() && viewEl.scrollTop <= 0) dragStart(e.touches[0].clientY);
+  }, { passive: true });
+  viewEl.addEventListener("touchmove", (e) => {
+    if (!drag) return;
+    const dy = e.touches[0].clientY - drag.y0;
+    if (!drag.moved && dy < 0) { drag = null; return; } // hacia arriba = scroll normal
+    if (dragMove(e.touches[0].clientY)) e.preventDefault();
+  }, { passive: false });
+  viewEl.addEventListener("touchend", dragEnd);
+  viewEl.addEventListener("touchcancel", dragEnd);
 
   function applyLang() {
     document.documentElement.lang = S.lang;
